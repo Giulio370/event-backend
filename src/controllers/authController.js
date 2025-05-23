@@ -1,6 +1,13 @@
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const sendVerificationEmail = require('../utils/mailer');
+const {
+  generateAccessToken,
+  generateRefreshToken
+} = require('../utils/jwt');
+const { verifyToken } = require('../utils/jwt');
+
 
 // POST /signup
 const register = async (req, res) => {
@@ -61,6 +68,165 @@ const verifyEmail = async (req, res) => {
   }
 };
 
+
+//POST /LogIn
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Cerca l'utente
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ message: 'Credenziali non valide' });
+    }
+
+    // Verifica la password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Credenziali non valide' });
+    }
+
+    // Verifica se l'utente ha confermato l'email
+    if (!user.verified) {
+      return res.status(403).json({ message: 'Conferma prima la tua email' });
+    }
+
+    // Genera i token
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    // Salva il refresh token nel DB
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    // Imposta i cookie HTTP-only
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: 15 * 60 * 1000 // 15 minuti
+    });
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 giorni
+    });
+
+    // Risposta con info utente
+    res.status(200).json({
+      message: 'Login effettuato con successo',
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role
+      }
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Errore del server' });
+  }
+};
+
+
+//POST /logout
+
+const logout = async (req, res) => {
+  try {
+    const token = req.cookies.refreshToken;
+
+    if (token) {
+      const decoded = verifyToken(token, process.env.JWT_REFRESH_SECRET);
+      const user = await User.findById(decoded.id);
+
+      if (user) {
+        user.refreshToken = null;
+        await user.save();
+      }
+    }
+
+    // Cancella i cookie
+    res.clearCookie('accessToken');
+    res.clearCookie('refreshToken');
+
+    res.status(200).json({ message: 'Logout effettuato con successo' });
+  } catch (err) {
+    console.error('Errore nel logout:', err);
+    res.status(500).json({ message: 'Errore durante il logout' });
+  }
+};
+
+
+//POST /refreshToken
+const refreshToken = async (req, res) => {
+  try {
+    const token = req.cookies.refreshToken;
+
+    if (!token) {
+      return res.status(401).json({ message: 'Token di refresh mancante' });
+    }
+
+    // Verifica il refresh token
+    const decoded = verifyToken(token, process.env.JWT_REFRESH_SECRET);
+
+    if (!decoded.id) {
+      return res.status(403).json({ message: 'Token non valido' });
+    }
+
+    // Cerca l'utente
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(403).json({ message: 'Utente non trovato' });
+    }
+
+
+    if (user.refreshToken !== token) {
+      return res.status(403).json({ message: 'Token di refresh non valido' });
+    }
+
+
+    // Genera nuovi token
+    const newAccessToken = generateAccessToken(user);
+    const newRefreshToken = generateRefreshToken(user);
+
+    // Salva il nuovo refresh token nel DB
+    user.refreshToken = newRefreshToken;
+    await user.save();
+
+    // Invia nuovi cookie
+    res.cookie('accessToken', newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: 15 * 60 * 1000 // 15 minuti
+    });
+
+    res.cookie('refreshToken', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 giorni
+    });
+
+    res.status(200).json({
+      message: 'Token aggiornato',
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role
+      }
+    });
+
+  } catch (err) {
+    console.error('❌ Errore nel refresh token:', err);
+    res.status(403).json({ message: 'Token di refresh non valido o scaduto' });
+  }
+};
+
+
 // POST /resend-verification
 const resendVerificationEmail = async (req, res) => {
   const { email } = req.body;
@@ -101,7 +267,10 @@ const resendVerificationEmail = async (req, res) => {
 };
 
 module.exports = {
+  logout,
+  login,
   register,
   verifyEmail,
-  resendVerificationEmail
+  resendVerificationEmail,
+  refreshToken
 };

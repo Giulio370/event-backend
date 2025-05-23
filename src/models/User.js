@@ -25,8 +25,11 @@ const userSchema = new mongoose.Schema({
   },
   lastVerificationEmailSentAt: {
     type: Date
+  },
+  refreshToken: {
+    type: String,
+    default: null
   }
-
 
 });
 
