@@ -1,2 +1,36 @@
-node_modules
+# Dipendenze Node.js
+node_modules/
+
+# Variabili di ambiente
 .env
+.env.*
+
+# Log e file temporanei
+logs/
+*.log
+*.out
+*.pid
+tmp/
+temp/
+
+# Lockfile
+#package-lock.json
+
+# Build 
+dist/
+build/
+
+# Docker
+docker-compose.override.yml
+*.local.yml
+
+# Editor/IDE
+.vscode/
+.idea/
+
+# File di sistema
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
