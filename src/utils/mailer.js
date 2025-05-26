@@ -15,7 +15,6 @@ const canResend = (lastSent) => {
   return now - new Date(lastSent).getTime() > cooldown;
 };
 
-
 const sendVerificationEmail = async (to, token) => {
   const url = `http://localhost:3000/api/auth/verify?token=${token}`;
 
@@ -27,4 +26,22 @@ const sendVerificationEmail = async (to, token) => {
   });
 };
 
-module.exports = sendVerificationEmail;
+const sendPasswordResetEmail = async (to, resetUrl) => {
+  await transporter.sendMail({
+    from: `"Event App" <${process.env.EMAIL_USER}>`,
+    to,
+    subject: 'Reimposta la tua password',
+    html: `
+      <p>Hai richiesto di reimpostare la tua password.</p>
+      <p>Clicca sul link qui sotto per procedere:</p>
+      <a href="${resetUrl}">${resetUrl}</a>
+      <p>Il link scade tra 15 minuti.</p>
+    `,
+  });
+};
+
+module.exports = {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+  canResend
+};

@@ -19,11 +19,40 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'organizer', 'admin'],
     default: 'user',
   },
+  name: {
+    type: String,
+    trim: true,
+  },
+  description: {
+    type: String,
+    maxlength: 500,
+    trim: true,
+  },
+  profileImageUrl: {
+    type: String,
+    trim: true,
+    validate: {
+      validator: function (url) {
+        return /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|svg)?$/i.test(url);
+      },
+      message: 'URL immagine non valido',
+    },
+  },
   verified: {
     type: Boolean,
     default: false
   },
   lastVerificationEmailSentAt: {
+    type: Date
+  },
+  refreshToken: {
+    type: String,
+    default: null
+  },
+  passwordResetToken: {
+    type: String
+  },
+  passwordResetExpires: {
     type: Date
   }
 
