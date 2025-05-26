@@ -1,12 +1,14 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
-const sendVerificationEmail = require('../utils/mailer');
+const crypto = require('crypto');
 const {
   generateAccessToken,
   generateRefreshToken
 } = require('../utils/jwt');
 const { verifyToken } = require('../utils/jwt');
+const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/mailer');
+
 
 
 // POST /signup
@@ -158,6 +160,66 @@ const logout = async (req, res) => {
   }
 };
 
+//POST /Forgot Password
+const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(200).json({ message: 'Se l\'email è registrata, riceverai un link per reimpostare la password' }); // sicurezza
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    user.passwordResetToken = hashedToken;
+    user.passwordResetExpires = Date.now() + 1000 * 60 * 15; // 15 minuti
+    await user.save();
+
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&email=${user.email}`;
+    await sendPasswordResetEmail(user.email, resetUrl);
+    
+
+
+    res.status(200).json({ message: 'Se l\'email è registrata, riceverai un link per reimpostare la password' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Errore del server' });
+  }
+};
+
+//POST reset-Password
+const resetPassword = async (req, res) => {
+  const { token, email, newPassword } = req.body;
+
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+  try {
+    const user = await User.findOne({
+      email,
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Token non valido o scaduto' });
+    }
+
+    user.password = newPassword;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    user.refreshToken = null;
+
+    await user.save();
+
+    res.status(200).json({ message: 'Password reimpostata con successo. Effettua il login.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Errore del server' });
+  }
+};
+
 
 //POST /refreshToken
 const refreshToken = async (req, res) => {
@@ -226,6 +288,42 @@ const refreshToken = async (req, res) => {
   }
 };
 
+//GET /me
+const getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password -refreshToken');
+    if (!user) return res.status(404).json({ message: 'Utente non trovato' });
+
+    res.json(user);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Errore del server' });
+  }
+};
+
+
+//PATCH /me
+const updateMe = async (req, res) => {
+  const { name, description, profileImageUrl } = req.body;
+
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'Utente non trovato' });
+
+    if (name !== undefined) user.name = name;
+    if (description !== undefined) user.description = description;
+    if (profileImageUrl !== undefined) user.profileImageUrl = profileImageUrl;
+
+    await user.save();
+    res.json({ message: 'Profilo aggiornato con successo' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Errore del server' });
+  }
+};
+
+
+
 
 // POST /resend-verification
 const resendVerificationEmail = async (req, res) => {
@@ -266,11 +364,49 @@ const resendVerificationEmail = async (req, res) => {
   }
 };
 
+
+//POST ChangePassword
+const changePassword = async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'Utente non trovato' });
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'La vecchia password non è corretta' });
+    }
+
+    user.password = newPassword;
+    user.refreshToken = null; 
+    await user.save();
+
+    
+    res.clearCookie('accessToken');
+    res.clearCookie('refreshToken');
+
+    res.status(200).json({ message: 'Password aggiornata con successo. Effettua di nuovo il login.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Errore del server' });
+  }
+};
+
+
+
+
 module.exports = {
   logout,
   login,
   register,
   verifyEmail,
   resendVerificationEmail,
-  refreshToken
+  refreshToken,
+  getMe,
+  updateMe,
+  changePassword,
+  forgotPassword, 
+  resetPassword  
 };
+
