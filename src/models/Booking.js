@@ -7,3 +7,7 @@ const bookingSchema = new mongoose.Schema({
   event: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
   createdAt: { type: Date, default: Date.now }
 });
+
+bookingSchema.index({ user: 1, event: 1 }, { unique: true });
+
+module.exports = mongoose.model('Booking', bookingSchema);

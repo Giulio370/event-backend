@@ -53,6 +53,18 @@ router.patch(
 // GET eventi 
 router.get('/', eventController.getEvents);
 
+
+
+//GET my EVENTS (Organizer)
+router.get(
+  '/my-events',
+  authenticateJWT,
+  authorizeRoles('organizer'),
+  eventController.getMyEvents
+);
+
+
+
 // GET dettaglio evento per ID
 router.get('/:id', authenticateJWT, eventController.getEventById);
 
@@ -65,6 +77,41 @@ router.patch(
   require('../middlewares/multerErrorHandler'),
   eventController.uploadImage
 );
+
+
+//PATCH Elimina immagine EVENTO (Anche da Cloudinary)
+router.delete(
+  '/:id/images',
+  authenticateJWT,
+  authorizeRoles('organizer'),
+  eventController.removeImage
+);
+
+
+// Prenota evento
+router.post(
+  '/:id/book',
+  authenticateJWT,
+  authorizeRoles('user'),
+  eventController.bookEvent
+);
+
+// Annulla prenotazione
+router.delete(
+  '/:id/book',
+  authenticateJWT,
+  authorizeRoles('user'),
+  eventController.cancelBooking
+);
+
+// Lista prenotazioni evento (solo organizer)
+router.get(
+  '/:id/bookings',
+  authenticateJWT,
+  authorizeRoles('organizer'),
+  eventController.getBookings
+);
+
 
 
 

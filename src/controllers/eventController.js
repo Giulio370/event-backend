@@ -139,5 +139,125 @@ exports.uploadImage = async (req, res) => {
 };
 
 
+//PATCH Elimina immagine EVENTO (Anche da Cloudinary)
+const { cloudinary } = require('../utils/cloudinary');
+
+exports.removeImage = async (req, res) => {
+  try {
+    const { imageUrl } = req.body;
+    const eventId = req.params.id;
+
+    if (!imageUrl) return res.status(400).json({ error: 'imageUrl is required' });
+
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ error: 'Evento non trovato' });
+
+    if (event.organizer.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Non sei autorizzato' });
+    }
+
+    const imageIndex = event.images.indexOf(imageUrl);
+    if (imageIndex === -1) {
+      return res.status(404).json({ error: 'Immagine non trovata nell\'evento' });
+    }
+
+    event.images.splice(imageIndex, 1);
+    await event.save();
+
+    // Rimuove da Cloudinary
+    const publicIdMatch = imageUrl.match(/\/v\d+\/(.+)\.(jpg|jpeg|png|webp|avif)/);
+    if (publicIdMatch) {
+      const publicId = publicIdMatch[1];
+      await cloudinary.uploader.destroy(`events/${publicId}`);
+    }
+
+    res.json({ message: 'Immagine rimossa con successo' });
+
+  } catch (err) {
+    console.error('❌ Errore rimozione immagine:', err);
+    res.status(500).json({ error: 'Errore durante la rimozione' });
+  }
+};
+
+
+// POST PRENOTA EVENTO
+
+exports.bookEvent = async (req, res) => {
+  try {
+    const { id: eventId } = req.params;
+    const userId = req.user.id;
+
+    const existing = await Booking.findOne({ user: userId, event: eventId });
+    if (existing) return res.status(400).json({ error: 'Sei già prenotato a questo evento' });
+
+    const booking = new Booking({ user: userId, event: eventId });
+    await booking.save();
+
+    res.status(201).json({ message: 'Prenotazione effettuata con successo' });
+  } catch (err) {
+    console.error('❌ Errore prenotazione:', err);
+    res.status(500).json({ error: 'Errore durante la prenotazione' });
+  }
+};
+
+// ANNULLA PRENOTAZIONE
+exports.cancelBooking = async (req, res) => {
+  try {
+    const { id: eventId } = req.params;
+    const userId = req.user.id;
+
+    const deleted = await Booking.findOneAndDelete({ user: userId, event: eventId });
+    if (!deleted) return res.status(404).json({ error: 'Prenotazione non trovata' });
+
+    res.json({ message: 'Prenotazione annullata con successo' });
+  } catch (err) {
+    console.error('❌ Errore annullamento:', err);
+    res.status(500).json({ error: 'Errore durante la cancellazione' });
+  }
+};
+
+//GET LISTA PARTECIPANTI
+exports.getBookings = async (req, res) => {
+  try {
+    const { id: eventId } = req.params;
+
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ error: 'Evento non trovato' });
+
+    if (event.organizer.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Non autorizzato' });
+    }
+
+    const bookings = await Booking.find({ event: eventId }).populate('user', 'name email');
+    res.json(bookings);
+  } catch (err) {
+    console.error('❌ Errore nel recupero prenotazioni:', err);
+    res.status(500).json({ error: 'Errore durante il recupero' });
+  }
+};
+
+//GET MY EVENTS (ORGANIZER)
+
+exports.getMyEvents = async (req, res) => {
+  try {
+
+    const organizerId = req.user?.id || req.user?._id;
+    if (!organizerId) {
+      return res.status(400).json({ error: 'Organizer ID non trovato nel token' });
+    }
+
+    const events = await Event.find({ organizer: organizerId })
+  .select('title date location status')  
+  .sort({ createdAt: -1 });
+
+    res.json(events);
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Errore nel recupero evento' });
+  }
+};
+
+
+
+
 
 
