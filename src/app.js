@@ -15,6 +15,8 @@ app.use('/api/auth', authRoutes);
 const eventRoutes = require('./routes/eventRoutes');
 app.use('/api/events', eventRoutes);
 
+const favoriteRoutes = require("./routes/favoriteRoutes");
+app.use("/api", favoriteRoutes);
 
 
 

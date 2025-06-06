@@ -112,6 +112,10 @@ router.get(
   eventController.getBookings
 );
 
+//Annulla evento
+router.patch("/:id/cancel", authenticateJWT, authorizeRoles("organizer"), eventController.cancelEvent);
+
+
 
 
 

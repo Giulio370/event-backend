@@ -47,15 +47,57 @@ exports.deleteEvent = async (req, res) => {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ error: 'Evento non trovato' });
 
-    if (event.organizer.toString() !== req.user.id)
+    if (event.organizer.toString() !== req.user.id) {
       return res.status(403).json({ error: 'Non sei autorizzato a eliminare questo evento' });
+    }
+
+    const hasBookings = await Booking.exists({ event: event._id });
+
+    if (hasBookings) {
+      return res.status(403).json({
+        error: 'Impossibile eliminare un evento con prenotazioni attive'
+      });
+    }
 
     await event.deleteOne();
     res.json({ message: 'Evento eliminato' });
+
   } catch (err) {
     res.status(500).json({ error: 'Errore durante l\'eliminazione' });
   }
 };
+
+
+
+//ANNULLA EVENTO (quando l'evento ha prenotazioni non sarà più possibile eliminarlo, ma si potrà solo annullare)
+exports.cancelEvent = async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ error: 'Evento non trovato' });
+
+    if (event.organizer.toString() !== req.user.id)
+      return res.status(403).json({ error: 'Non sei autorizzato a modificare questo evento' });
+
+    if (event.status === 'draft') {
+      return res.status(400).json({ error: 'Non puoi annullare un evento in bozza. Puoi solo eliminarlo.' });
+    }
+
+    if (event.status === 'canceled') {
+      return res.status(400).json({ error: 'Evento già annullato.' });
+    }
+
+    event.status = 'canceled';
+    await event.save();
+
+    res.json({ message: 'Evento annullato con successo' });
+
+  } catch (err) {
+    res.status(500).json({ error: 'Errore durante l\'annullamento' });
+  }
+};
+
+
+
 
 // Pubblica evento
 exports.publishEvent = async (req, res) => {
@@ -187,11 +229,24 @@ exports.bookEvent = async (req, res) => {
     const { id: eventId } = req.params;
     const userId = req.user.id;
 
-    const existing = await Booking.findOne({ user: userId, event: eventId });
-    if (existing) return res.status(400).json({ error: 'Sei già prenotato a questo evento' });
+    const event = await Event.findById(eventId);
+if (!event) return res.status(404).json({ error: 'Evento non trovato' });
 
-    const booking = new Booking({ user: userId, event: eventId });
-    await booking.save();
+// Doppia prenotazione
+const existing = await Booking.findOne({ user: userId, event: eventId });
+if (existing) return res.status(400).json({ error: 'Sei già prenotato a questo evento' });
+
+// Limite massimo partecipanti raggiunto
+const currentCount = await Booking.countDocuments({ event: eventId });
+if (currentCount >= event.maxParticipants) {
+  return res.status(400).json({ error: 'Posti esauriti per questo evento' });
+}
+
+const booking = new Booking({ user: userId, event: eventId });
+await booking.save();
+
+res.status(201).json({ message: 'Prenotazione effettuata con successo' });
+
 
     res.status(201).json({ message: 'Prenotazione effettuata con successo' });
   } catch (err) {

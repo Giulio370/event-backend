@@ -13,7 +13,7 @@ const eventSchema = new mongoose.Schema({
   images: [String], 
   status: {
     type: String,
-    enum: ['draft', 'published'],
+    enum: ['draft', 'published', 'canceled'],
     default: 'draft'
   },
   maxParticipants: { type: Number, default: 100 },
