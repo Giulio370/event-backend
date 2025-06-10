@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 
 // Middleware per autenticazione
 const authenticateJWT = (req, res, next) => {
+  
   const token = req.cookies.accessToken;
   if (!token) {
     return res.status(401).json({ message: 'Accesso negato. Effettua il login.' });

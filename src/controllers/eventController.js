@@ -216,14 +216,13 @@ exports.removeImage = async (req, res) => {
     res.json({ message: 'Immagine rimossa con successo' });
 
   } catch (err) {
-    console.error('❌ Errore rimozione immagine:', err);
+    console.error(' Errore rimozione immagine:', err);
     res.status(500).json({ error: 'Errore durante la rimozione' });
   }
 };
 
 
 // POST PRENOTA EVENTO
-
 exports.bookEvent = async (req, res) => {
   try {
     const { id: eventId } = req.params;
@@ -250,7 +249,7 @@ res.status(201).json({ message: 'Prenotazione effettuata con successo' });
 
     res.status(201).json({ message: 'Prenotazione effettuata con successo' });
   } catch (err) {
-    console.error('❌ Errore prenotazione:', err);
+    console.error(' Errore prenotazione:', err);
     res.status(500).json({ error: 'Errore durante la prenotazione' });
   }
 };
@@ -266,10 +265,38 @@ exports.cancelBooking = async (req, res) => {
 
     res.json({ message: 'Prenotazione annullata con successo' });
   } catch (err) {
-    console.error('❌ Errore annullamento:', err);
+    console.error(' Errore annullamento:', err);
     res.status(500).json({ error: 'Errore durante la cancellazione' });
   }
 };
+
+// GET Lista eventi prenotati dall’utente
+exports.getMyBookings = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const bookings = await Booking.find({ user: userId }).populate({
+      path: 'event',
+      select: 'title date location category status'
+    });
+
+    res.json(bookings.map(b => ({
+      eventId: b.event._id,
+      title: b.event.title,
+      date: b.event.date,
+      city: b.event.location.city,
+      address: b.event.location.address,
+      category: b.event.category,
+      status: b.event.status,
+      bookingDate: b.createdAt
+    })));
+  } catch (err) {
+    console.error(' Errore getMyBookings:', err);
+    res.status(500).json({ error: 'Errore nel recupero delle prenotazioni utente' });
+  }
+};
+
+
 
 //GET LISTA PARTECIPANTI
 exports.getBookings = async (req, res) => {
@@ -286,7 +313,7 @@ exports.getBookings = async (req, res) => {
     const bookings = await Booking.find({ event: eventId }).populate('user', 'name email');
     res.json(bookings);
   } catch (err) {
-    console.error('❌ Errore nel recupero prenotazioni:', err);
+    console.error(' Errore nel recupero prenotazioni:', err);
     res.status(500).json({ error: 'Errore durante il recupero' });
   }
 };

@@ -7,7 +7,13 @@ const { authenticateJWT, authorizeRoles } = require('../middlewares/authMiddlewa
 
 const upload = require('../middlewares/upload');
 
-
+//Lista Eventi Prenotati
+router.get(
+  '/me/bookings',
+  authenticateJWT,
+  authorizeRoles('user'), 
+  eventController.getMyBookings
+);
 
 router.get('/me', authenticateJWT, (req, res) => {
   res.status(200).json({
@@ -111,6 +117,8 @@ router.get(
   authorizeRoles('organizer'),
   eventController.getBookings
 );
+
+
 
 //Annulla evento
 router.patch("/:id/cancel", authenticateJWT, authorizeRoles("organizer"), eventController.cancelEvent);
