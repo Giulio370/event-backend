@@ -7,6 +7,27 @@ const { authenticateJWT, authorizeRoles } = require('../middlewares/authMiddlewa
 
 const upload = require('../middlewares/upload');
 
+
+//DashBoard Organizzatore
+router.get(
+  '/organizer/dashboard',
+  authenticateJWT,
+  authorizeRoles('organizer'),
+  eventController.getDashboardStats
+);
+
+//Aggiungi immagine di copertina evento
+router.patch(
+  '/:id/cover',
+  authenticateJWT,
+  authorizeRoles('organizer'),
+  upload.single('cover'),
+  require('../middlewares/multerErrorHandler'),
+  eventController.uploadCoverImage
+);
+
+
+
 //Lista Eventi Prenotati
 router.get(
   '/me/bookings',

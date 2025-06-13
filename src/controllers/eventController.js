@@ -296,6 +296,78 @@ exports.getMyBookings = async (req, res) => {
   }
 };
 
+//GET Dashboard Organizzatore
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const organizerId = req.user.id;
+    const events = await Event.find({ organizer: organizerId });
+
+    let totalBookings = 0;
+    let totalOccupancy = 0;
+
+    let published = 0, draft = 0, canceled = 0;
+
+    for (const event of events) {
+      const bookingCount = await Booking.countDocuments({ event: event._id });
+      totalBookings += bookingCount;
+
+      if (event.status === 'published') published++;
+      if (event.status === 'draft') draft++;
+      if (event.status === 'canceled') canceled++;
+
+      if (event.maxParticipants > 0) {
+        totalOccupancy += (bookingCount / event.maxParticipants) * 100;
+      }
+    }
+
+    const response = {
+      totalEvents: events.length,
+      publishedEvents: published,
+      draftEvents: draft,
+      canceledEvents: canceled,
+      totalBookings,
+      averageOccupancy: events.length > 0 ? Math.round(totalOccupancy / events.length) : 0
+    };
+
+    res.json(response);
+
+  } catch (err) {
+    console.error('Errore dashboard organizer:', err);
+    res.status(500).json({ error: 'Errore nel recupero dashboard organizer' });
+  }
+};
+
+//Aggiungi l'immagine di copertina
+exports.uploadCoverImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nessun file ricevuto' });
+    }
+
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ error: 'Evento non trovato' });
+
+    if (event.organizer.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Non sei autorizzato a modificare questo evento' });
+    }
+
+    // Salva la cover image come path Cloudinary
+    event.coverImage = req.file.path;
+    await event.save();
+
+    res.json({
+      message: 'Copertina caricata con successo',
+      coverImage: event.coverImage
+    });
+
+  } catch (err) {
+    console.error('Errore upload copertina:', err);
+    res.status(500).json({ error: 'Errore durante l\'upload della copertina' });
+  }
+};
+
+
+
 
 
 //GET LISTA PARTECIPANTI
