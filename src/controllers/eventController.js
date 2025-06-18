@@ -138,20 +138,45 @@ exports.getEvents = async (req, res) => {
   }
 };
 
+
 // GET evento per ID (visibile solo se pubblicato o l'organizer è l'utente)
+const Favorite = require('../models/Favorite');
+
 exports.getEventById = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ error: 'Evento non trovato' });
 
-    if (event.status !== 'published' && event.organizer.toString() !== req.user?.id)
-      return res.status(403).json({ error: 'Non sei autorizzato a vedere questo evento' });
+    const isOwner = req.user && event.organizer && event.organizer.toString() === req.user.id;
 
-    res.json(event);
+    if (event.status !== 'published' && !isOwner) {
+      return res.status(403).json({ error: 'Non sei autorizzato a vedere questo evento' });
+    }
+
+    let isFavorite = false;
+    let isBooked = false;
+
+    if (req.user) {
+      const [favorite, booking] = await Promise.all([
+        Favorite.findOne({ user: req.user.id, event: event._id }),
+        Booking.findOne({ user: req.user.id, event: event._id }),
+      ]);
+
+      isFavorite = !!favorite;
+      isBooked = !!booking;
+    }
+
+    res.json({
+      ...event.toObject(),
+      isFavorite,
+      isBooked,
+    });
   } catch (err) {
-    res.status(500).json({ error: 'Errore nel recupero evento' });
+    console.error('Errore nel getEventById:', err);
+    res.status(500).json({ message: 'Errore nel recupero dell’evento' });
   }
 };
+
 
 //PATCH Carica immagine EVENTO
 exports.uploadImage = async (req, res) => {
@@ -394,21 +419,21 @@ exports.getBookings = async (req, res) => {
 
 exports.getMyEvents = async (req, res) => {
   try {
-
     const organizerId = req.user?.id || req.user?._id;
     if (!organizerId) {
       return res.status(400).json({ error: 'Organizer ID non trovato nel token' });
     }
 
     const events = await Event.find({ organizer: organizerId })
-  .select('title date location status')  
-  .sort({ createdAt: -1 });
+      .select('title date location status coverImage') 
+      .sort({ createdAt: -1 });
 
     res.json(events);
   } catch (err) {
     res.status(500).json({ error: err.message || 'Errore nel recupero evento' });
   }
 };
+
 
 
 
