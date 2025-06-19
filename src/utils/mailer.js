@@ -26,19 +26,29 @@ const sendVerificationEmail = async (to, token) => {
   });
 };
 
+
+
 const sendPasswordResetEmail = async (to, resetUrl) => {
+  const urlObj = new URL(resetUrl);
+  const token = urlObj.searchParams.get('token');
+  const email = urlObj.searchParams.get('email');
+
   await transporter.sendMail({
     from: `"Event App" <${process.env.EMAIL_USER}>`,
     to,
-    subject: 'Reimposta la tua password',
+    subject: '🔐 Reimposta la tua password',
     html: `
       <p>Hai richiesto di reimpostare la tua password.</p>
-      <p>Clicca sul link qui sotto per procedere:</p>
-      <a href="${resetUrl}">${resetUrl}</a>
-      <p>Il link scade tra 15 minuti.</p>
+      <p><strong>Clicca sul link qui sotto per procedere:</strong></p>
+      <p><a href="${resetUrl}">${resetUrl}</a></p>
+      <p><strong>Il link scade tra 15 minuti.</strong></p>
+      <hr/>
+      <p>🔑 <strong>Token:</strong> ${token}</p>
+      <p>📧 <strong>Email:</strong> ${email}</p>
     `,
   });
 };
+
 
 module.exports = {
   sendVerificationEmail,
