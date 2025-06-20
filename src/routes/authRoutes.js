@@ -52,7 +52,7 @@ router.get('/reset-password-form', (req, res) => {
       <title>Reimposta password</title>
     </head>
     <body style="font-family: sans-serif; max-width: 400px; margin: 40px auto;">
-      <h2>🔐 Reimposta la tua password</h2>
+      <h2> Reimposta la tua password</h2>
       <form id="resetForm">
         <input type="hidden" name="token" value="${token}" />
         <input type="hidden" name="email" value="${email}" />
@@ -78,10 +78,10 @@ router.get('/reset-password-form', (req, res) => {
 
           const resultText = document.getElementById('result');
           if (res.ok) {
-            resultText.textContent = '✅ Password aggiornata con successo!';
+            resultText.textContent = ' Password aggiornata con successo!';
             resultText.style.color = 'green';
           } else {
-            resultText.textContent = '❌ Errore: token scaduto o password non valida.';
+            resultText.textContent = ' Errore: token scaduto o password non valida.';
             resultText.style.color = 'red';
           }
         });
