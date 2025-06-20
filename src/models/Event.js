@@ -6,10 +6,18 @@ const eventSchema = new mongoose.Schema({
   date: { type: Date, required: true },
 
   location: {
-  address: { type: String, required: true },
-  city: { type: String, required: true }
-},
-
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [lng, lat]
+      required: false
+    },
+    address: { type: String, required: true },
+    city: { type: String, required: true }
+  },
 
   category: { type: String },
   price: { type: Number, default: 0 },
