@@ -15,6 +15,9 @@ app.use('/api/auth', authRoutes);
 const eventRoutes = require('./routes/eventRoutes');
 app.use('/api/events', eventRoutes);
 
+const favoriteRoutes = require("./routes/favoriteRoutes");
+app.use("/api", favoriteRoutes);
+
 
 
 mongoose.connect(process.env.MONGO_URI, {
@@ -24,6 +27,5 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log("🟢 Connesso a MongoDB"))
 .catch(err => console.error("🔴 Errore connessione MongoDB:", err));
 
-// Aggiungeremo qui le rotte man mano
 
 module.exports = app;
