@@ -167,7 +167,7 @@ const forgotPassword = async (req, res) => {
   try {
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(200).json({ message: 'Se l\'email è registrata, riceverai un link per reimpostare la password' }); // sicurezza
+      return res.status(200).json({ message: 'Se l\'email è registrata, riceverai un link per reimpostare la password' }); 
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
@@ -283,7 +283,7 @@ const refreshToken = async (req, res) => {
     });
 
   } catch (err) {
-    console.error('❌ Errore nel refresh token:', err);
+    console.error('Errore nel refresh token:', err);
     res.status(403).json({ message: 'Token di refresh non valido o scaduto' });
   }
 };
